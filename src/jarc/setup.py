@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'reativo = jarc.reativo:main',
+            'mapa = jarc.mapa:main',
         ],
     },
 )
