@@ -16,11 +16,11 @@ class MapNavigator(Node):
             self.get_logger().info('Aguardando o serviço de mapa...')
         self.get_logger().info('Conectado aos serviços de movimentação e mapa!')
 
-        # Configurações iniciais
         self.occupancy_grid = None
         self.grid_shape = None
         self.path = []
 
+    # Método para obter o mapa do serviço GetMap
     def get_map(self):
         request = GetMap.Request()
         future = self.map_client.call_async(request)
@@ -34,19 +34,21 @@ class MapNavigator(Node):
             self.get_logger().error('Não foi possível obter o mapa.')
             return False
 
+    # Método para reconstruir o grid 2D
     def reconstruct_grid(self):
         if self.occupancy_grid and self.grid_shape:
             grid_2d = np.array(self.occupancy_grid).reshape(self.grid_shape)
             return grid_2d
         return None
 
+    # Algortimo A*
     def a_star_search(self, start, goal, grid):
         rows, cols = grid.shape
         open_set = PriorityQueue()
         open_set.put((0, start))
         came_from = {}
-        g_score = {start: 0}
-        f_score = {start: self.heuristic(start, goal)}
+        g_score = {start: 0} # Distância do início ao nó atual
+        f_score = {start: self.heuristic(start, goal)} # Total, incluindo a heurística e o g_score
 
         while not open_set.empty():
             _, current = open_set.get()
@@ -54,6 +56,7 @@ class MapNavigator(Node):
             if current == goal:
                 return self.reconstruct_path(came_from, current)
 
+            # Explora as quatros direções possíveis a partir da posição atual
             for direction, (dr, dc) in [('down', (1, 0)), ('up', (-1, 0)), ('right', (0, 1)), ('left', (0, -1))]:
                 neighbor = (current[0] + dr, current[1] + dc)
                 
@@ -68,9 +71,12 @@ class MapNavigator(Node):
 
         return None
 
+
+    # Heurística para o algoritmo A* (distância de Manhattan)
     def heuristic(self, a, b):
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
+    # Método para reconstruir o caminho
     def reconstruct_path(self, came_from, current):
         path = []
         while current in came_from:
@@ -79,6 +85,7 @@ class MapNavigator(Node):
         path.reverse()
         return path
 
+    # Faz o robô se mover ao longo do caminho encontrado
     def move_along_path(self):
         for direction in self.path:
             result = self.move_robot(direction)
@@ -89,6 +96,7 @@ class MapNavigator(Node):
                 self.get_logger().info('Alvo alcançado com sucesso!')
                 break
 
+    # Método para mover o robô
     def move_robot(self, direction):
         request = MoveCmd.Request()
         request.direction = direction
@@ -96,13 +104,14 @@ class MapNavigator(Node):
         rclpy.spin_until_future_complete(self, future)
         return future.result()
 
+    # Função conclusiva, que obtém o mapa, reconstrói o grid, encontra o caminho e move o robô
     def navigate_to_target(self):
         if not self.get_map():
             return
 
         grid = self.reconstruct_grid()
-        start = tuple(np.argwhere(np.array(grid) == 'r')[0])  # posição inicial do robô
-        goal = tuple(np.argwhere(np.array(grid) == 't')[0])   # posição do alvo
+        start = tuple(np.argwhere(np.array(grid) == 'r')[0])
+        goal = tuple(np.argwhere(np.array(grid) == 't')[0])
 
         self.path = self.a_star_search(start, goal, grid)
         if self.path:
@@ -110,6 +119,7 @@ class MapNavigator(Node):
         else:
             self.get_logger().error('Nenhum caminho encontrado para o alvo.')
 
+# Função principal para inicializar o nó e navegar até o alvo
 def main(args=None):
     rclpy.init(args=args)
     navigator = MapNavigator()
