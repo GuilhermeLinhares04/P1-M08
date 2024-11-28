@@ -13,7 +13,7 @@ class WallFollowingSolver(Node):
         self.solved = False
         self.visited_positions = set()
         self.stack = []
-        self.direction_order = ['right', 'down', 'left', 'up']  # Prioridade: direita -> frente -> esquerda -> trás
+        self.direction_order = ['left', 'down', 'right', 'up']
         self.timer = self.create_timer(0.05, self.timer_callback)
 
     # Ficar chamando o serviço de movimentação constantemente
@@ -53,15 +53,18 @@ class WallFollowingSolver(Node):
         if robot_pos not in self.visited_positions:
             self.stack.append(robot_pos)
         
+        # Adiciona a posição atual às posições visitadas
         self.visited_positions.add(robot_pos)
         self.get_logger().info(f'Posições visitadas: {self.visited_positions}')
 
+        # Verifica se o movimento foi bem sucedido
         if not response.success:
             self.get_logger().info(f'Movimento {self.req.direction} não funcionou.')
             blocked_pos = self.get_new_position(robot_pos, self.req.direction)
             self.visited_positions.add(blocked_pos)
             self.get_logger().info(f'Posição bloqueada adicionada: {blocked_pos}')
 
+        # Verifica os movimentos possíveis a partir da posição atual
         possible_moves = self.get_possible_moves(left, right, up, down, robot_pos)
         self.get_logger().info(f'Movimentos possíveis: {possible_moves}')
 
